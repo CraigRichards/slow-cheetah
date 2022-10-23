@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System.Diagnostics;
+
 namespace Microsoft.VisualStudio.SlowCheetah
 {
     using System;
@@ -20,15 +22,38 @@ namespace Microsoft.VisualStudio.SlowCheetah
         /// <returns>The detected encoding.</returns>
         public static Encoding GetEncoding(string filename)
         {
-            if (string.IsNullOrWhiteSpace(filename))
+            Encoding theFunc()
             {
-                throw new ArgumentException(nameof(filename));
+                if (string.IsNullOrWhiteSpace(filename))
+                {
+                    throw new ArgumentException(nameof(filename));
+                }
+
+                using (var file = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                {
+                    return GetEncoding(file);
+                }
             }
 
-            using (var file = new FileStream(filename, FileMode.Open, FileAccess.Read))
+            for (int i = 0; i < 6; i++)
             {
-                return GetEncoding(file);
+                try
+                {
+                    return theFunc();
+                }
+                catch (Exception e)
+                {
+                    Debugger.Launch();
+                    if (i == 5)
+                    {
+                        Console.WriteLine(e.Message);
+
+                        return theFunc();
+                    }
+                }
             }
+
+            return theFunc();
         }
 
         /// <summary>

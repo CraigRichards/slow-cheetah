@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System.Diagnostics;
+
 namespace Microsoft.VisualStudio.SlowCheetah
 {
     using System;
@@ -143,26 +145,49 @@ namespace Microsoft.VisualStudio.SlowCheetah
 
         private bool TrySaveToFile(Stream result, string sourceFile, string destinationFile)
         {
-            try
+            bool theFunc()
             {
-                string contents;
-                var encoding = TransformUtilities.GetEncoding(sourceFile);
-                using (StreamReader reader = new StreamReader(result, true))
+                try
                 {
-                    // Get the contents of the result stram
-                    contents = reader.ReadToEnd();
+                    string contents;
+                    var encoding = TransformUtilities.GetEncoding(sourceFile);
+                    using (StreamReader reader = new StreamReader(result, true))
+                    {
+                        // Get the contents of the result stram
+                        contents = reader.ReadToEnd();
+                    }
+
+                    // Make sure to save it in the encoding of the result stream
+                    File.WriteAllText(destinationFile, contents, encoding);
+
+                    return true;
                 }
-
-                // Make sure to save it in the encoding of the result stream
-                File.WriteAllText(destinationFile, contents, encoding);
-
-                return true;
+                catch (Exception ex)
+                {
+                    this.logger.LogErrorFromException(ex);
+                    return false;
+                }
             }
-            catch (Exception ex)
+
+            for (int i = 0; i < 6; i++)
             {
-                this.logger.LogErrorFromException(ex);
-                return false;
+                try
+                {
+                    return theFunc();
+                }
+                catch (Exception e)
+                {
+                    Debugger.Launch();
+                    if (i == 5)
+                    {
+                        Console.WriteLine(e.Message);
+
+                        return theFunc();
+                    }
+                }
             }
+
+            return theFunc();
         }
     }
 }
